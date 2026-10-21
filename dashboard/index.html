@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Voice AI Agency: consola privada del canal web con IA multilingüe.">
+  <title>Voice AI Agency / Console</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#e9f1f3;background:#050b0f}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 94% 0,rgba(27,94,106,.16),transparent 45%),#050b0f}
+    button,input,textarea,select{font:inherit}button{cursor:pointer}
+    a{color:inherit}
+    :focus-visible{outline:3px solid #8ce6d9;outline-offset:3px}
+    .shell{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh}
+    aside{background:#0a1318;border-right:1px solid #1e3139;display:flex;flex-direction:column;gap:28px;padding:30px 23px}
+    .logo{display:flex;align-items:center;gap:14px;text-decoration:none}.mark{border:1px solid #438984;background:#13302f;color:#a1f0e5;width:48px;height:48px;display:grid;place-items:center;font-size:24px;border-radius:15px;box-shadow:inset 0 0 22px #164743}
+    .logo b{letter-spacing:.09em;display:block;font-size:12px}.logo small{font-size:10px;letter-spacing:.17em;color:#95b3b7}
+    .kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#6e959d;font-weight:700}
+    .nav-item{padding:14px 16px;background:#12222a;border:1px solid #22414c;border-radius:12px;display:flex;align-items:center;gap:14px;color:#d9eeeb}
+    .nav-item small{margin-left:auto;color:#85ebd4}.info{margin-top:auto;padding:19px 16px;background:#0e1c21;border:1px solid #22343c;border-radius:16px}
+    .info p{font-size:13px;line-height:1.6;color:#9db1b9}.chip{color:#98eedb;background:#14392f;border:1px solid #275648;border-radius:99px;padding:5px 11px;display:inline-block;font-size:10px;letter-spacing:.1em}
+    main{min-width:0;display:flex;flex-direction:column}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid #1c3139;padding:20px 36px}
+    .topbar .status{color:#8debd6;display:flex;align-items:center;gap:8px;font-size:12px}.dot{width:8px;height:8px;background:#78d9c1;border-radius:50%;box-shadow:0 0 12px #78d9c1}
+    .topbar select{color:#ecffff;background:#0c1a21;border:1px solid #2a474f;padding:11px;border-radius:9px}
+    .center{flex:1;width:min(900px,100%);margin:0 auto;display:flex;flex-direction:column;min-height:0;padding:48px 32px 26px}
+    .intro .kicker{color:#88cfc8}.intro h1{font-size:clamp(36px,6vw,62px);font-weight:600;letter-spacing:-.055em;line-height:1.06;margin:18px 0}.intro h1 span{color:#85e3d4}.intro p{max-width:650px;color:#9db5bc;line-height:1.7;font-size:15px}
+    .card{margin-top:28px;border:1px solid #2a424a;background:linear-gradient(135deg,#0f2128,#0a171c);border-radius:22px;padding:21px}
+    .card h2{margin:0;font-size:15px;font-weight:600}.card p{font-size:12px;color:#9bb4ba;line-height:1.5}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.row input{background:#040c10;color:white;border:1px solid #39515a;border-radius:10px;padding:12px 14px;flex:1;min-width:200px}
+    .button{border:0;background:#91e5d7;color:#062423;border-radius:10px;padding:12px 19px;font-weight:700}.button:hover{background:white}.button:disabled{opacity:.45;cursor:not-allowed}
+    .secondary{background:#152b32;color:#a1eadd;border:1px solid #28515b}.secondary:hover{background:#1f4046}
+    .thread{margin-top:30px;display:flex;flex-direction:column;gap:15px;min-height:150px;flex:1;max-height:550px;overflow:auto;padding:4px 4px 24px}
+    .message{max-width:85%;padding:17px 18px;line-height:1.75;border:1px solid #29444b;border-radius:18px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+    .message.user{align-self:flex-end;background:#1b3e3d;border-color:#3f7572;border-bottom-right-radius:5px}
+    .message.assistant{align-self:flex-start;background:#102027;border-bottom-left-radius:5px}.message small{display:block;font-weight:700;letter-spacing:.13em;text-transform:uppercase;font-size:10px;color:#84bcb8;margin-bottom:8px}
+    .composer{border:1px solid #3b555b;background:#0e1b20;border-radius:17px;padding:15px}.composer textarea{width:100%;resize:vertical;min-height:75px;max-height:220px;color:#eafffd;background:transparent;border:0;outline:none;line-height:1.6}
+    .composer-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .composer-bottom small{color:#86a6ac}.composer button{white-space:nowrap}
+    .notice{font-size:12px;color:#c7ab80;min-height:20px;margin:12px 0}
+    footer{padding-top:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#728d96;font-size:11px}
+    @media(max-width:800px){.shell{grid-template-columns:1fr}aside{padding:18px;gap:16px;border-right:0;border-bottom:1px solid #1d3039}.info{display:none}.topbar{padding:15px 20px}.center{padding:28px 20px 20px}.intro h1{font-size:39px}.message{max-width:95%}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside aria-label="Panel lateral">
+      <a href="/" class="logo"><span class="mark" aria-hidden="true">◈</span><span><b>VOICE AI AGENCY</b><small>PRIVATE CONSOLE</small></span></a>
+      <div>
+        <p class="kicker">CANALES</p>
+        <div class="nav-item"><span aria-hidden="true">◉</span> Web Chat <small>OPERATIVO</small></div>
+        <p style="font-size:12px;line-height:1.8;color:#76969e;padding:12px">Telefonía, WhatsApp, Instagram y conversión voz/texto no están conectados en esta versión.</p>
+      </div>
+      <div class="info"><span class="chip">PRIVACIDAD</span><p>No guardamos el texto del chat en el servidor. No introduzcas contraseñas ni datos de clientes. Cada mensaje se envía al proveedor IA seleccionado.</p></div>
+    </aside>
+    <main>
+      <div class="topbar"><div class="status"><span class="dot" aria-hidden="true"></span><span>CONSOLE / WEB CHAT</span></div><label for="lang" class="kicker">IDIOMA
+        <select id="lang" aria-label="Idioma"><option value="auto">Detectar automáticamente</option><option value="es">Español</option><option value="en">English</option><option value="pt-BR">Português (Brasil)</option><option value="pt-PT">Português (Portugal)</option><option value="ca">Català</option></select>
+      </label></div>
+      <div class="center">
+        <section class="intro">
+          <p class="kicker">INTELIGENCIA CONVERSACIONAL · 01</p>
+          <h1>La atención empieza <span>escuchando.</span></h1>
+          <p>Un canal de conversación real con modelos configurables. Activa una sesión privada para probar respuestas en cinco idiomas, sin paneles ficticios ni cifras inventadas.</p>
+        </section>
+        <section class="card" aria-labelledby="session-label">
+          <h2 id="session-label">Autenticación de la consola</h2>
+          <p>Introduce el token del servidor (\`VOICE_AGENCY_API_TOKEN\`). Permanece solo en la memoria de esta pestaña; no se guarda en el navegador.</p>
+          <div class="row"><input id="token" type="password" autocomplete="off" spellcheck="false" aria-label="Token del servidor" placeholder="Token privado del servidor"><button class="button" id="activate">Activar sesión</button><button class="button secondary" id="clear" type="button">Borrar conversación</button></div>
+        </section>
+        <div id="thread" role="log" aria-label="Conversación" aria-live="polite" aria-relevant="additions" class="thread"><div class="message assistant"><small>Sistema</small>Tu conversación es temporal. Activa el token y envía un mensaje para consultar al proveedor configurado.</div></div>
+        <form id="composer" class="composer">
+          <label for="input" class="kicker">MENSAJE</label>
+          <textarea id="input" name="message" maxlength="4000" placeholder="¿En qué podemos ayudarte hoy?" required></textarea>
+          <div class="composer-bottom"><small>Enter: enviar · Shift+Enter: nueva línea</small><button class="button" id="send" type="submit" disabled>Enviar ↗</button></div>
+        </form>
+        <p class="notice" id="notice" role="status" aria-live="polite"></p>
+        <footer><span>Voice AI Agency · Web Chat</span><span>No se conserva historial entre sesiones ni se promete atención humana automática.</span></footer>
+      </div>
+    </main>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const thread = $("thread"), notice = $("notice"), button = $("send"), input = $("input");
+      let token = "", messages = [], pending = false;
+      const append = (role, content) => {
+        const el = document.createElement("div");
+        el.className = "message " + role;
+        const label = document.createElement("small");
+        label.textContent = role === "user" ? "Tú" : "Asistente";
+        el.append(label, document.createTextNode(content)); // No HTML from the provider
+        thread.appendChild(el);
+        thread.scrollTop = thread.scrollHeight;
+      };
+      $("activate").addEventListener("click", () => {
+        token = $("token").value.trim();
+        $("token").value = "";
+        button.disabled = !token;
+        notice.textContent = token ? "Sesión activada en esta pestaña." : "Introduce un token para continuar.";
+        input.focus();
+      });
+      $("clear").addEventListener("click", () => {
+        messages = [];
+        thread.replaceChildren();
+        append("assistant", "Conversación borrada de esta pestaña.");
+        notice.textContent = "Historial local borrado.";
+      });
+      const send = async () => {
+        const content = input.value.trim();
+        if (!content || !token || pending) return;
+        const outgoing = [...messages.slice(-10), { role: "user", content }];
+        input.value = "";
+        pending = true; button.disabled = true; notice.textContent = "Consultando al proveedor...";
+        append("user", content);
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ messages: outgoing, language: $("lang").value === "auto" ? null : $("lang").value }),
+          });
+          if (!res.ok) throw new Error(res.status === 401 ? "Token incorrecto." : res.status === 429 ? "Límite de peticiones alcanzado." : "Servicio no disponible (" + res.status + ").");
+          const data = await res.json();
+          messages = [...outgoing, { role: "assistant", content: data.reply }];
+          append("assistant", data.reply);
+          notice.textContent = "Respuesta recibida · " + data.provider + " / " + data.language;
+        } catch (error) {
+          // Keep failed user input so it may be retried after correcting settings.
+          input.value = content;
+          notice.textContent = error instanceof Error ? error.message : "Error de comunicación.";
+        } finally {
+          pending = false; button.disabled = !token;
+          input.focus();
+        }
+      };
+      $("composer").addEventListener("submit", (event) => { event.preventDefault(); void send(); });
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } });
+    })();
+  </script>
+</body>
+</html>
