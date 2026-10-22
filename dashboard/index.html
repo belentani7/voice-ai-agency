@@ -88,6 +88,13 @@
       const $ = (id) => document.getElementById(id);
       const thread = $("thread"), notice = $("notice"), button = $("send"), input = $("input");
       let token = "", messages = [], pending = false;
+      let activeRequest = null, sessionVersion = 0;
+      const cancelPending = () => {
+        sessionVersion += 1;
+        if (activeRequest) activeRequest.abort();
+        activeRequest = null;
+        pending = false;
+      };
       const append = (role, content) => {
         const el = document.createElement("div");
         el.className = "message " + role;
@@ -98,6 +105,7 @@
         thread.scrollTop = thread.scrollHeight;
       };
       $("activate").addEventListener("click", () => {
+        cancelPending();
         token = $("token").value.trim();
         $("token").value = "";
         button.disabled = !token;
@@ -105,6 +113,8 @@
         input.focus();
       });
       $("clear").addEventListener("click", () => {
+        cancelPending();
+        button.disabled = !token;
         messages = [];
         thread.replaceChildren();
         append("assistant", "Conversación borrada de esta pestaña.");
@@ -116,25 +126,35 @@
         const outgoing = [...messages.slice(-10), { role: "user", content }];
         input.value = "";
         pending = true; button.disabled = true; notice.textContent = "Consultando al proveedor...";
+        const version = sessionVersion;
+        const controller = new AbortController();
+        activeRequest = controller;
         append("user", content);
         try {
           const res = await fetch("/api/chat", {
             method: "POST",
+            signal: controller.signal,
+            cache: "no-store",
             headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
             body: JSON.stringify({ messages: outgoing, language: $("lang").value === "auto" ? null : $("lang").value }),
           });
           if (!res.ok) throw new Error(res.status === 401 ? "Token incorrecto." : res.status === 429 ? "Límite de peticiones alcanzado." : "Servicio no disponible (" + res.status + ").");
           const data = await res.json();
+          if (version !== sessionVersion || controller.signal.aborted) return;
           messages = [...outgoing, { role: "assistant", content: data.reply }];
           append("assistant", data.reply);
           notice.textContent = "Respuesta recibida · " + data.provider + " / " + data.language;
         } catch (error) {
+          if (version !== sessionVersion || controller.signal.aborted) return;
           // Keep failed user input so it may be retried after correcting settings.
           input.value = content;
           notice.textContent = error instanceof Error ? error.message : "Error de comunicación.";
         } finally {
-          pending = false; button.disabled = !token;
-          input.focus();
+          if (version === sessionVersion) {
+            activeRequest = null;
+            pending = false; button.disabled = !token;
+            input.focus();
+          }
         }
       };
       $("composer").addEventListener("submit", (event) => { event.preventDefault(); void send(); });
