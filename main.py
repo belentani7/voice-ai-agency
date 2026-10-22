@@ -64,6 +64,15 @@ def _authorize(authorization: str | None):
 def _limit_requests(ip_address: str):
     now = time.monotonic()
     with _usage_lock:
+        # Prune idle clients before allocating a new deque. Otherwise a
+        # distributed stream of one-off source IPs grows this process forever.
+        if ip_address not in _usage and len(_usage) >= 4096:
+            stale = [client for client, times in _usage.items()
+                     if not times or now - times[-1] >= 60]
+            for client in stale:
+                del _usage[client]
+            if len(_usage) >= 4096:
+                raise HTTPException(429, "Service is busy; try again shortly")
         visits = _usage[ip_address]
         while visits and now - visits[0] >= 60:
             visits.popleft()
