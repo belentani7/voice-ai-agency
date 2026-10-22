@@ -4,7 +4,9 @@ import unittest
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from main import app, _usage
+from main import app, _usage, _limit_requests
+from collections import deque
+from fastapi import HTTPException
 from languages import detect_language_from_text
 
 
@@ -73,6 +75,22 @@ class WebChatTests(unittest.TestCase):
             res = self.client.post("/api/chat", json=payload,
                                    headers={"Authorization": "Bearer test"})
         self.assertEqual(res.status_code, 422)
+
+    def test_rate_limit_prunes_stale_clients_without_losing_current_quota(self):
+        with patch("main.time.monotonic", return_value=1000):
+            _usage.update({f"stale-{index}": deque([0.0]) for index in range(4096)})
+            _limit_requests("new-client")
+        self.assertEqual(len(_usage), 1)
+        self.assertEqual(len(_usage["new-client"]), 1)
+
+    def test_rate_limit_fails_closed_when_all_client_slots_are_busy(self):
+        with patch("main.time.monotonic", return_value=1000):
+            _usage.update({f"active-{index}": deque([999.0]) for index in range(4096)})
+            with self.assertRaises(HTTPException) as err:
+                _limit_requests("new-client")
+        self.assertEqual(err.exception.status_code, 429)
+        self.assertNotIn("new-client", _usage)
+        self.assertEqual(len(_usage), 4096)
 
     def test_language_hints_do_not_match_substrings(self):
         self.assertEqual(detect_language_from_text("Hola"), "es")
