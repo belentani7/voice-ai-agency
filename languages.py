@@ -133,7 +133,7 @@ def detect_language_from_text(text: str) -> str:
     }
 
     def contains_phrase(phrase: str) -> bool:
-        return re.search(r"(?<!\\w)" + re.escape(phrase) + r"(?!\\w)", normalized) is not None
+        return re.search(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", normalized) is not None
 
     scores = {language: sum(1 for phrase in phrases if contains_phrase(phrase))
               for language, phrases in cues.items()}
