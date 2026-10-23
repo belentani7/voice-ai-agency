@@ -111,32 +111,42 @@ WHISPER_TO_LANG = {
 
 # Text message language detection (keyword-based)
 def detect_language_from_text(text: str) -> str:
-    """Detect language from text input using keyword heuristics."""
-    text_lower = text.lower().strip()
+    """Choose a supported language from whole-word cues, not substrings.
 
-    # Priority order: Catalan > Portuguese > Spanish > English
-    ca_keywords = ["hola", "gràcies", "si us plau", "bon dia", "bones tardes", "vull", "puc"]
-    pt_keywords = ["ola", "obrigado", "obrigada", "bom dia", "boa tarde", "por favor", "quero"]
-    es_keywords = ["hola", "gracias", "por favor", "buenos dias", "buenas tardes", "quiero"]
-    en_keywords = ["hello", "thanks", "please", "good morning", "good afternoon", "i want"]
+    Shared greetings such as "hola" cannot identify Catalan alone.
+    Stronger distinctive phrases take precedence over shared words.
+    """
+    import re
+    import unicodedata
 
-    # Check Catalan first (most specific)
-    if any(kw in text_lower for kw in ca_keywords):
-        return "ca"
+    normalized = unicodedata.normalize("NFKD", text.casefold())
+    normalized = "".join(c for c in normalized if not unicodedata.combining(c))
 
-    # Portuguese (BR/PT share keywords, default to BR)
-    if any(kw in text_lower for kw in pt_keywords):
-        return "pt-BR"
+    cues = {
+        "ca": ("gracies", "si us plau", "bon dia", "bones tardes", "vull", "puc", "adeu"),
+        "pt-BR": ("obrigado", "obrigada", "bom dia", "boa tarde", "por gentileza",
+                  "quero", "preciso", "ola", "oi", "voce", "tudo bem"),
+        "es": ("gracias", "buenos dias", "buenas tardes", "quiero",
+               "necesito", "como estas", "adios"),
+        "en": ("hello", "thanks", "please", "good morning",
+               "good afternoon", "i want", "i need"),
+    }
 
-    # Spanish
-    if any(kw in text_lower for kw in es_keywords):
-        return "es"
+    def contains_phrase(phrase: str) -> bool:
+        return re.search(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", normalized) is not None
 
-    # English (fallback)
-    if any(kw in text_lower for kw in en_keywords):
-        return "en"
+    scores = {language: sum(1 for phrase in phrases if contains_phrase(phrase))
+              for language, phrases in cues.items()}
 
-    return "en"  # Default
+    best = max(scores.values(), default=0)
+    if best:
+        for language in ("ca", "pt-BR", "es", "en"):
+            if scores[language] == best:
+                return language
+
+    # "hola" is shared with Catalan. Without other evidence,
+    # Spanish is the conservative regional fallback.
+    return "es" if contains_phrase("hola") else "en"
 
 
 def get_lang_config(lang_code: str) -> LanguageConfig:
