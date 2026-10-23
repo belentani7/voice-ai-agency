@@ -9,6 +9,7 @@
 """
 
 from dataclasses import dataclass
+import re
 from typing import Dict, Optional
 
 
@@ -104,44 +105,73 @@ WHISPER_TO_LANG = {
     "spanish": "es",
     "catalan": "ca",
     "english": "en",
-    "french": "fr",
-    "italian": "it",
-    "german": "de",
 }
 
-# Text message language detection (keyword-based)
-def detect_language_from_text(text: str) -> str:
-    """Detect language from text input using keyword heuristics."""
-    text_lower = text.lower().strip()
+# Audio is never translated implicitly. The TTS voice and lesson locale must match.
+# These are the locales for which this service currently has explicit voice IDs.
+LANGUAGE_ALIASES = {
+    "pt": "pt-BR", "pt-br": "pt-BR", "pt-pt": "pt-PT",
+    "es": "es", "es-es": "es",
+    "ca": "ca", "ca-es": "ca",
+    "en": "en", "en-us": "en",
+}
 
-    # Priority order: Catalan > Portuguese > Spanish > English
-    ca_keywords = ["hola", "gràcies", "si us plau", "bon dia", "bones tardes", "vull", "puc"]
-    pt_keywords = ["ola", "obrigado", "obrigada", "bom dia", "boa tarde", "por favor", "quero"]
-    es_keywords = ["hola", "gracias", "por favor", "buenos dias", "buenas tardes", "quiero"]
-    en_keywords = ["hello", "thanks", "please", "good morning", "good afternoon", "i want"]
 
-    # Check Catalan first (most specific)
-    if any(kw in text_lower for kw in ca_keywords):
-        return "ca"
+def resolve_supported_language(lang_code: str) -> str:
+    """Return a supported locale or fail closed (never read Spanish with English TTS).
 
-    # Portuguese (BR/PT share keywords, default to BR)
-    if any(kw in text_lower for kw in pt_keywords):
-        return "pt-BR"
+    Region requests such as es-MX, en-GB or fr-FR are deliberately rejected
+    until a matching regional voice has been configured and tested.
+    """
+    if not isinstance(lang_code, str):
+        raise ValueError("A supported BCP-47 language/locale string is required.")
+    code = LANGUAGE_ALIASES.get(lang_code.strip().replace("_", "-").lower())
+    if not code:
+        raise ValueError(f"Unsupported voice locale: {lang_code!r}")
+    return code
 
-    # Spanish
-    if any(kw in text_lower for kw in es_keywords):
-        return "es"
 
-    # English (fallback)
-    if any(kw in text_lower for kw in en_keywords):
-        return "en"
+def detect_language_from_text(text: str, preferred_language: Optional[str] = None) -> str:
+    """Use *whole word* evidence, not substring matches; honor regional preference.
 
-    return "en"  # Default
+    Short greetings ('hola'), shared terms ('por favor') and mixed language
+    sentences are ambiguous. Keep the explicitly selected language in those cases.
+    For unconstrained text, default to English only when evidence is absent.
+    Never infer pt-PT versus pt-BR from shared vocabulary.
+    """
+    preference = resolve_supported_language(preferred_language) if preferred_language else None
+    if not isinstance(text, str):
+        return preference or "en"
+    words = re.findall(r"[^\\W\\d_]+", text.casefold(), flags=re.UNICODE)
+    padded = " " + " ".join(words) + " "
+    signatures = {
+        "ca": ("gràcies", "si us plau", "bon dia", "bona tarda", "vull", "puc", "necessito"),
+        "pt-BR": ("olá", "obrigado", "obrigada", "bom dia", "boa tarde", "quero", "preciso", "você", "vocês"),
+        "es": ("gracias", "buenos días", "buenos dias", "buenas tardes", "quiero", "necesito", "puedes", "usted"),
+        "en": ("hello", "thanks", "please", "good morning", "good afternoon", "i want", "i need"),
+    }
+    scores = {language: sum((" " + phrase + " ") in padded for phrase in phrases)
+              for language, phrases in signatures.items()}
+    highest = max(scores.values(), default=0)
+    leaders = [language for language, score in scores.items() if score == highest and score > 0]
+    if preference and (not leaders or preference in leaders or
+                       (preference == "pt-PT" and "pt-BR" in leaders)):
+        return preference
+    if len(leaders) == 1:
+        detected = leaders[0]
+        if detected == "pt-BR" and preference == "pt-PT":
+            return preference
+        return detected
+    if preference:
+        return preference
+    if "hola" in words and not leaders:
+        return "es"  # shared with Catalan; use 'ca' when explicitly selected
+    return "en"  # No confident evidence: callers should request a locale explicitly.
 
 
 def get_lang_config(lang_code: str) -> LanguageConfig:
-    """Get language configuration by code."""
-    return LANGUAGES.get(lang_code, LANGUAGES["en"])
+    """Return an explicitly matching TTS locale, never silently substitute English."""
+    return LANGUAGES[resolve_supported_language(lang_code)]
 
 
 def get_all_languages() -> list:
