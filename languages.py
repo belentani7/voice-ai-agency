@@ -142,7 +142,7 @@ def detect_language_from_text(text: str, preferred_language: Optional[str] = Non
     preference = resolve_supported_language(preferred_language) if preferred_language else None
     if not isinstance(text, str):
         return preference or "en"
-    words = re.findall(r"[^\\W\\d_]+", text.casefold(), flags=re.UNICODE)
+    words = re.findall(r"[^\W\d_]+", text.casefold(), flags=re.UNICODE)
     padded = " " + " ".join(words) + " "
     signatures = {
         "ca": ("gràcies", "si us plau", "bon dia", "bona tarda", "vull", "puc", "necessito"),
