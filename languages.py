@@ -98,52 +98,64 @@ If you don't know something, say you'll route them to a human agent.""",
     ),
 }
 
-# Whisper detection mapping
+# Whisper language detection: only map languages implemented above.
 WHISPER_TO_LANG = {
-    "portuguese": "pt-BR",  # Default to BR
+    "portuguese": "pt-BR",
     "spanish": "es",
     "catalan": "ca",
     "english": "en",
-    "french": "fr",
-    "italian": "it",
-    "german": "de",
 }
 
-# Text message language detection (keyword-based)
+# Specific hints have more weight; ambiguous expressions such as 'por favor'
+# do not decide a language by themselves.
+_LANGUAGE_HINTS = {
+    "ca": {"bon dia": 3, "bona tarda": 3, "gracies": 3,
+           "si us plau": 3, "vull": 3, "soc": 2, "puc": 2},
+    "pt-BR": {"ola": 3, "bom dia": 3, "boa tarde": 3,
+              "obrigado": 3, "obrigada": 3, "quero": 2, "preciso": 2,
+              "por favor": 1},
+    "es": {"hola": 3, "buenos dias": 3, "buenas tardes": 3,
+           "gracias": 3, "quiero": 2, "necesito": 2,
+           "por favor": 1},
+    "en": {"hello": 3, "hi": 2, "good morning": 3,
+           "good afternoon": 3, "thank you": 3, "thanks": 3,
+           "please": 2, "i want": 3, "i need": 3},
+}
+
+
 def detect_language_from_text(text: str) -> str:
-    """Detect language from text input using keyword heuristics."""
-    text_lower = text.lower().strip()
+    """Best-effort keyword language hints with Unicode and word boundaries.
 
-    # Priority order: Catalan > Portuguese > Spanish > English
-    ca_keywords = ["hola", "gràcies", "si us plau", "bon dia", "bones tardes", "vull", "puc"]
-    pt_keywords = ["ola", "obrigado", "obrigada", "bom dia", "boa tarde", "por favor", "quero"]
-    es_keywords = ["hola", "gracias", "por favor", "buenos dias", "buenas tardes", "quiero"]
-    en_keywords = ["hello", "thanks", "please", "good morning", "good afternoon", "i want"]
+    Unknown or ambiguous inputs fall back to English or Spanish, not to an
+    arbitrary language chosen by list order. Production speech recognition
+    should use confidence-aware language identification instead.
+    """
+    import re
+    import unicodedata
 
-    # Check Catalan first (most specific)
-    if any(kw in text_lower for kw in ca_keywords):
-        return "ca"
-
-    # Portuguese (BR/PT share keywords, default to BR)
-    if any(kw in text_lower for kw in pt_keywords):
-        return "pt-BR"
-
-    # Spanish
-    if any(kw in text_lower for kw in es_keywords):
-        return "es"
-
-    # English (fallback)
-    if any(kw in text_lower for kw in en_keywords):
+    normalized = unicodedata.normalize("NFKD", text.casefold())
+    plain = "".join(c for c in normalized if not unicodedata.combining(c))
+    scores = {
+        language: sum(weight for term, weight in hints.items()
+                      if re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", plain))
+        for language, hints in _LANGUAGE_HINTS.items()
+    }
+    maximum = max(scores.values(), default=0)
+    if maximum == 0:
         return "en"
-
-    return "en"  # Default
+    winners = [language for language, score in scores.items() if score == maximum]
+    if len(winners) == 1:
+        return winners[0]
+    # 'por favor' is shared; among equal clues prefer Spanish. Portuguese BR/PT
+    # are not reliably distinguishable from short text alone.
+    return "es" if "es" in winners else "en" if "en" in winners else winners[0]
 
 
 def get_lang_config(lang_code: str) -> LanguageConfig:
-    """Get language configuration by code."""
+    """Get a supported language configuration (fallback: English)."""
     return LANGUAGES.get(lang_code, LANGUAGES["en"])
 
 
 def get_all_languages() -> list:
-    """Get list of all supported languages."""
-    return [{"code": k, "name": v.name} for k, v in LANGUAGES.items()]
+    """List supported language identifiers and display names."""
+    return [{"code": code, "name": lang.name} for code, lang in LANGUAGES.items()]

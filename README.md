@@ -1,114 +1,54 @@
-# Voice AI Agency Platform
+# Voice AI Agency — Web Chat operativo
 
-**Plataforma multi-canal de agentes de voz AI para PYMEs en LATAM + España/Portugal**
+**Estado:** canal Web Chat funcional sobre proveedores de lenguaje reales, con consola administrativa local y soporte de cinco idiomas. El repositorio todavía **no** implementa captura/reconocimiento de audio, síntesis de voz, WhatsApp, Instagram, Twilio, CRM o una plataforma comercial multi-tenant. No hay simulaciones de estos canales.
 
-## Qué es
+## Qué funciona
 
-Un framework completo para crear, desplegar y gestionar agentes de voz AI que atienden clientes por WhatsApp, Instagram DM y llamadas telefónicas. Multiidioma (PT-BR, PT-PT, ES, CA, EN), costo operativo ~$0, escalable a cientos de clientes.
+- FastAPI con `GET /health`, `GET /api/languages`, `POST /api/chat` y consola web en `/`.
+- Respuestas de modelos reales por Groq, OpenAI o DeepSeek mediante API HTTPS y credenciales propias.
+- Español, catalán, inglés y portugués brasileño/europeo, con detección aproximada por texto.
+- Hasta 12 mensajes por petición, 4.000 caracteres por mensaje y 16.000 caracteres en total; se rechazan mensajes vacíos o compuestos solo de espacios antes de contactar al proveedor.
+- Token de acceso exigido por el servidor: servicio deshabilitado si no está configurado.
+- Límite en memoria de 20 peticiones/minuto por IP; no sustituye un limitador compartido en despliegues con varios workers.
+- No se guardan mensajes en disco ni en una base de datos. El navegador mantiene el contexto en memoria hasta cerrar/refrescar.
+- Consola responsive con interacción real, navegación accesible y texto remoto renderizado como texto seguro.
 
-## Arquitectura
+## Ponerlo en marcha
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  ADMIN DASHBOARD                     │
-│              (Next.js + Tailwind CSS)                │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │ Clients  │ │  Bots    │ │ Analytics│ │  CRM   │ │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
-└───────────────────────┬─────────────────────────────┘
-                        │ REST API
-┌───────────────────────▼─────────────────────────────┐
-│                  BACKEND (FastAPI)                    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │ Channels │ │ Voice    │ │   LLM    │ │  CRM   │ │
-│  │ WA/IG/   │ │ Processor│ │  Router  │ │ Engine │ │
-│  │ Phone    │ │ STT/TTS  │ │ 5 models │ │Twenty  │ │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
-└─────────────────────────────────────────────────────┘
+Python 3.10 o posterior.
+
+```sh
+python -m venv .venv
+# Activa tu entorno virtual
+python -m pip install -r requirements.txt
 ```
 
-## Canales soportados
+Configura en el entorno (no copies claves reales al repositorio):
 
-| Canal | API | Costo | Status |
-|-------|-----|-------|--------|
-| WhatsApp | Meta Cloud API | 1000 gratis/mes | Listo |
-| Instagram DM | instagrapi | Gratis (scraping) | Listo |
-| Llamadas | Twilio Voice | ~$0.01/min | Listo |
-| Telegram | Bot API | Gratis | Planificado |
-| Web Chat | WebSocket | Gratis | Planificado |
-
-## Stack
-
-- **Backend**: Python 3.10+, FastAPI, uvicorn
-- **STT**: OpenAI Whisper (local) o Groq Whisper API
-- **LLM**: Groq (Llama 3.3 70B) / OpenAI / DeepSeek / Gemini
-- **TTS**: Edge-TTS (Microsoft Neural voices, gratis)
-- **Audio**: pydub + ffmpeg
-- **CRM**: Twenty / NocoBase (via MCP)
-- **Dashboard**: HTML/CSS/JS vanilla (sin build step)
-- **Deploy**: Docker Compose, VPS $5/mes
-
-## Costo operativo por cliente
-
-| Componente | Costo |
-|------------|-------|
-| Groq LLM (30 RPM free) | $0 |
-| Edge-TTS | $0 |
-| Whisper (local) | $0 |
-| WhatsApp (1000 free/mes) | $0 |
-| VPS compartido | ~$1-2/cliente |
-| **Total** | **~$1-2/cliente/mes** |
-| **Precio de venta** | **$150-500/cliente/mes** |
-| **Margen** | **97-99%** |
-
-## Quick Start
-
-```bash
-# 1. Clonar e instalar
-git clone <repo>
-cd voice-ai-agency
-pip install -r requirements.txt
-
-# 2. Configurar
-cp .env.example .env
-# Editar .env con tus API keys
-
-# 3. Ejecutar
+```sh
+export VOICE_AGENCY_API_TOKEN="un-token-aleatorio-largo"
+export LLM_PROVIDER="groq"
+export GROQ_API_KEY="tu-clave"
 python main.py
-
-# Dashboard: http://localhost:8000/dashboard
-# API: http://localhost:8000/docs
 ```
 
-## Estructura
+Para OpenAI configura `LLM_PROVIDER=openai` y `OPENAI_API_KEY`. Para DeepSeek: `LLM_PROVIDER=deepseek` y `DEEPSEEK_API_KEY`. El modelo se puede cambiar mediante `LLM_MODEL`; se usan valores por defecto por proveedor.
 
-```
-voice-ai-agency/
-├── main.py                    # FastAPI entry point
-├── config.py                  # Configuration management
-├── voice_processor.py         # STT + TTS pipeline
-├── llm_chat.py                # Multi-LLM router
-├── languages.py               # 5 idiomas + system prompts
-├── crm_engine.py              # CRM integration (Twenty/NocoBase)
-├── channels/
-│   ├── whatsapp.py            # WhatsApp Cloud API
-│   ├── instagram.py           # Instagram DM (instagrapi)
-│   └── phone.py               # Twilio Voice
-├── dashboard/
-│   └── index.html             # Admin dashboard (single-page)
-├── templates/
-│   └── bot-config.json        # Plantilla de configuración de bot
-├── docs/
-│   ├── DEPLOY-GUIA.md         # Guía de despliegue
-│   └── BUSINESS-MODEL.md      # Modelo de negocio
-├── docker-compose.yml         # Deploy completo
-├── Dockerfile                 # Backend container
-├── requirements.txt           # Dependencias Python
-├── .env.example               # Template de configuración
-├── setup.py                   # Instalador automático
-└── Makefile                   # Comandos comunes
+Abre http://127.0.0.1:8000/ e introduce el token del servidor. La consola no inserta la clave del proveedor en JavaScript. No hay llamadas externas hasta enviar mensajes autenticados.
+
+En Windows PowerShell utiliza `$env:VOICE_AGENCY_API_TOKEN="..."`, etc.
+
+## Pruebas
+
+```sh
+python -m compileall -q main.py config.py languages.py tests
+python -m unittest discover -s tests -p 'test_*.py'
 ```
 
-## Licencia
+El test de respuestas reemplaza solo la conexión externa y verifica estructura/autenticación. Para una verificación real configura una credencial y ejecuta una conversación desde la consola.
 
-MIT — usar, modificar, vender. Sin restricciones.
+## Seguridad, límites y siguientes integraciones
+
+El canal recibe y envía texto al proveedor LLM elegido; verifica su política de tratamiento de datos antes de introducir información. No uses credenciales, datos bancarios, sanitarios o identificaciones reales. El servidor deshabilita la API si falta autenticación y limita el tamaño del contenido y la frecuencia, pero requiere TLS, aislamiento por cliente, gestión central de claves y auditoría antes de abrirlo a múltiples empresas.
+
+Los canales de mensajería, llamadas, STT/TTS y panel multiempresa siguen pendientes: no los consideres publicados ni operativos. La consola es una implementación real del canal web, no una simulación de telefonía.
