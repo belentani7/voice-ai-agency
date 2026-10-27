@@ -69,6 +69,35 @@ class WebChatTests(unittest.TestCase):
         self.assertEqual(res.json()["language"], "es")
         self.assertIn("Hola", res.json()["reply"])
 
+    def test_rejects_blank_message_before_provider_call(self):
+        env = {"VOICE_AGENCY_API_TOKEN": "local-test-token",
+               "GROQ_API_KEY": "test-provider-key"}
+        payload = {"messages": [{"role": "user", "content": "   "}]}
+        with patch.dict(os.environ, env, clear=True), patch("main.httpx.AsyncClient") as mocked:
+            res = self.client.post("/api/chat", json=payload,
+                                   headers={"Authorization": "Bearer local-test-token"})
+        self.assertEqual(res.status_code, 422)
+        mocked.assert_not_called()
+
+    def test_rejects_excessive_context_before_provider_call(self):
+        env = {"VOICE_AGENCY_API_TOKEN": "local-test-token",
+               "GROQ_API_KEY": "test-provider-key"}
+        payload = {"messages": [{"role": "user", "content": "x" * 4000}] * 5}
+        with patch.dict(os.environ, env, clear=True), patch("main.httpx.AsyncClient") as mocked:
+            res = self.client.post("/api/chat", json=payload,
+                                   headers={"Authorization": "Bearer local-test-token"})
+        self.assertEqual(res.status_code, 422)
+        mocked.assert_not_called()
+
+    def test_accepts_context_at_exact_budget(self):
+        env = {"VOICE_AGENCY_API_TOKEN": "local-test-token",
+               "GROQ_API_KEY": "test-provider-key", "LLM_PROVIDER": "groq"}
+        payload = {"messages": [{"role": "user", "content": "x" * 4000}] * 4}
+        with patch.dict(os.environ, env, clear=True), patch("main.httpx.AsyncClient", FakeAsyncClient):
+            res = self.client.post("/api/chat", json=payload,
+                                   headers={"Authorization": "Bearer local-test-token"})
+        self.assertEqual(res.status_code, 200, res.text)
+
     def test_rejects_assistant_as_last_message(self):
         payload = {"messages": [{"role": "assistant", "content": "Hello"}]}
         with patch.dict(os.environ, {"VOICE_AGENCY_API_TOKEN": "test"}, clear=True):

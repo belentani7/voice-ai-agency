@@ -17,7 +17,7 @@ import httpx
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from languages import detect_language_from_text, get_all_languages, get_lang_config, LANGUAGES
 
@@ -40,10 +40,25 @@ class Message(BaseModel):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1, max_length=4000)
 
+    @field_validator("content")
+    @classmethod
+    def reject_blank_content(cls, content: str) -> str:
+        if not content.strip():
+            raise ValueError("Message content must not be blank")
+        return content
+
 
 class ChatRequest(BaseModel):
     messages: list[Message] = Field(min_length=1, max_length=12)
     language: str | None = None
+
+    @field_validator("messages")
+    @classmethod
+    def limit_conversation_size(cls, messages: list[Message]) -> list[Message]:
+        # Bound total provider input, not just each individual message.
+        if sum(len(message.content) for message in messages) > 16000:
+            raise ValueError("Conversation exceeds 16000 characters")
+        return messages
 
 
 class ChatResponse(BaseModel):

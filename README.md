@@ -7,7 +7,7 @@
 - FastAPI con `GET /health`, `GET /api/languages`, `POST /api/chat` y consola web en `/`.
 - Respuestas de modelos reales por Groq, OpenAI o DeepSeek mediante API HTTPS y credenciales propias.
 - Español, catalán, inglés y portugués brasileño/europeo, con detección aproximada por texto.
-- Hasta 12 mensajes por petición y hasta 4.000 caracteres por mensaje.
+- Hasta 12 mensajes por petición, 4.000 caracteres por mensaje y 16.000 caracteres en total; se rechazan mensajes vacíos o compuestos solo de espacios antes de contactar al proveedor.
 - Token de acceso exigido por el servidor: servicio deshabilitado si no está configurado.
 - Límite en memoria de 20 peticiones/minuto por IP; no sustituye un limitador compartido en despliegues con varios workers.
 - No se guardan mensajes en disco ni en una base de datos. El navegador mantiene el contexto en memoria hasta cerrar/refrescar.
