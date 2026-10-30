@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090a10">
+  <meta name="description" content="Estudio local de conversación y aprendizaje con agentes de voz.">
+  <title>Aula Viva — Voice AI Agency</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#studio">Saltar al estudio</a>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Configuración del estudio">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">◉</span><span>VOICE AI AGENCY<small>Local · Classroom studio</small></span></div>
+      <div class="eyebrow">LAB / 01 — CONVERSACIÓN</div>
+      <h1>Una clase.<br><em>Muchas voces.</em></h1>
+      <p class="intro">Habla con una profesora, un compañero y un revisor. Tú eliges quién responde. Nada se guarda en disco.</p>
+      <div class="rule"></div>
+      <label for="lang">Idioma de la conversación</label>
+      <select id="lang"><option value="es">Español</option><option value="pt">Português (Brasil)</option><option value="en">English</option></select>
+      <div class="setting"><label for="volume">Volumen de las voces</label><output for="volume" id="volumeValue">80%</output></div>
+      <input id="volume" type="range" min="0" max="100" value="80">
+      <label class="switchline" for="autoSpeak"><input id="autoSpeak" type="checkbox" checked> Leer respuestas en voz alta</label>
+      <p class="footnote">Las voces y el reconocimiento del navegador pueden depender de servicios de tu sistema o navegador. El micrófono se activa solo al pulsarlo. Para máxima privacidad, utiliza el teclado y un motor de voz local verificado.</p>
+      <div class="rule"></div>
+      <p class="tiny">SIN CLOUD API · SIN TELEMETRÍA · SIN TRANSCRIPCIONES PERSISTENTES</p>
+    </aside>
+    <main id="studio" class="main">
+      <header class="topbar">
+        <div><span class="eyebrow">ESTUDIO / SESIÓN ABIERTA</span><h2>Aula Viva <span class="version">V1</span></h2></div>
+        <div class="status" id="status" role="status" aria-live="polite"><span class="status-dot"></span><span id="statusText">Comprobando Ollama local…</span></div>
+      </header>
+      <section aria-labelledby="agentsTitle">
+        <div class="section-heading"><h3 id="agentsTitle">Tu mesa de agentes</h3><span>Selecciona quién habla</span></div>
+        <div class="agents">
+          <button type="button" class="agent" data-role="teacher" aria-pressed="true">
+            <span class="agent-top"><span class="avatar teacher">01</span><span class="signal" aria-hidden="true">●</span></span>
+            <strong>Profesora</strong><small>Explica y pregunta</small><span class="agent-action">Pedir respuesta <span aria-hidden="true">↗</span></span>
+          </button>
+          <button type="button" class="agent" data-role="partner" aria-pressed="false">
+            <span class="agent-top"><span class="avatar partner">02</span><span class="signal" aria-hidden="true">●</span></span>
+            <strong>Compañero</strong><small>Relaciona e ilustra</small><span class="agent-action">Pedir respuesta <span aria-hidden="true">↗</span></span>
+          </button>
+          <button type="button" class="agent" data-role="critic" aria-pressed="false">
+            <span class="agent-top"><span class="avatar critic">03</span><span class="signal" aria-hidden="true">●</span></span>
+            <strong>Revisor</strong><small>Cuestiona y verifica</small><span class="agent-action">Pedir respuesta <span aria-hidden="true">↗</span></span>
+          </button>
+        </div>
+      </section>
+      <section class="conversation" aria-labelledby="transcriptTitle">
+        <div class="section-heading"><h3 id="transcriptTitle">Conversación</h3><button type="button" class="text-button" id="clear">Limpiar sesión</button></div>
+        <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text">
+          <div class="empty" id="empty"><span class="orb" aria-hidden="true">✳</span><strong>Tu primera pregunta cambia la clase.</strong><p>Escribe o usa el micrófono y elige un agente para responder.</p></div>
+        </div>
+      </section>
+      <form id="composer" class="composer">
+        <label for="message" class="sr-only">Tu pregunta para los agentes</label>
+        <textarea id="message" rows="2" maxlength="2500" placeholder="¿Qué quieres explorar hoy?"></textarea>
+        <div class="composer-bottom">
+          <div class="controls">
+            <button id="mic" type="button" class="round" title="Dictar con el micrófono" aria-label="Dictar con el micrófono" aria-pressed="false">◉</button>
+            <button id="stop" type="button" class="round" title="Detener la voz" aria-label="Detener la voz">◼</button>
+            <button id="chime" type="button" class="round" title="Campana de clase" aria-label="Campana de clase">♫</button>
+            <span class="helper" id="micHint">Escribe o dicta tu pregunta</span>
+          </div>
+          <button class="send" id="submit" type="submit">Hablar con <span id="target">Profesora</span> <span aria-hidden="true">↗</span></button>
+        </div>
+      </form>
+      <p class="notice" id="notice" role="alert" aria-live="polite"></p>
+      <footer>Laboratorio experimental local · Sin ejecución de comandos ni acceso a archivos</footer>
+    </main>
+  </div>
+</body>
+</html>
